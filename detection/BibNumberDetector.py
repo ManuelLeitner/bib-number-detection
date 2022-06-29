@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 import logging
 import os
@@ -13,6 +15,8 @@ from detection.service.interface.IBibNumberService import IBibNumberService
 
 class BibNumberDetector:
     def __init__(self, OUT_PATH: str):
+        self.img_with_bibs_ctr = 0
+        self.img_counter = 0
         self.__TESSERACT_CONFIG__ = "--psm 13"
 
         self.__supported_image_formats__ = ["jpg", "jpeg", "png", "tif", "tiff", "bmp", "dib", "webp"]
@@ -32,37 +36,56 @@ class BibNumberDetector:
         return self
 
     def detect_bib_numbers(self, img_path):
-
-        if os.path.isdir(img_path):
-            for img_file in os.listdir(img_path):
-                self.detect_bib_numbers(os.path.join(img_path, img_file))
-        else:
-            self.detect_bib_numbers_single(img_path)
+        try:
+            if os.path.isdir(img_path):
+                for img_file in os.listdir(img_path):
+                    self.detect_bib_numbers(os.path.join(img_path, img_file))
+            else:
+                self.detect_bib_numbers_single(img_path)
+        except Exception as e:
+            logging.error(e)
+            logging.error("FATAL: Could not process img_path: {}".format(img_path))
 
     def detect_bib_numbers_single(self, img_path: str):
         if img_path.split(".")[-1] not in self.__supported_image_formats__:
             logging.warning("Image format not supported: {}".format(img_path))
             return
-        logging.info("Processing image: {}".format(img_path))
+
+        self.craft.output_dir = os.path.join(self.OUT_PATH, os.path.basename(img_path))
+
+        logging.info("Processing image: {}".format(os.path.abspath(img_path)))
+        logging.info("Output path: {}".format(os.path.abspath(self.craft.output_dir)))
+        t0 = time.time()
 
         image = cv2.imread(img_path)
 
-
         # apply craft text detection and export detected regions to output directory
         prediction_result = self.craft.detect_text(img_path)
-
+        found_bibs: list[int] = []
         for box in prediction_result["boxes"]:
             cropped_img = rectify_poly(image, box)
 
-            result: str = pytesseract.image_to_string(cropped_img, config=self.__TESSERACT_CONFIG__)
+            result: str = pytesseract.image_to_string(cropped_img, config=self.__TESSERACT_CONFIG__).strip()
             logging.debug("Detected text: {}".format(result))
             try:
-                if self.bib_number_svc.find_number(int(result.strip())) is not None:
-                    logging.info("Found bib number: {}".format(result))
+                result_number = int(result)
+                if self.bib_number_svc.find_number(int(result)) is not None:
+                    found_bibs.append(int(result))
+                    logging.info("Found bib number: {}".format(result_number))
             except:
                 logging.debug("Could not parse bib number: {}".format(result))
 
-        logging.info("Done processing image: {}".format(img_path))
+        with open(os.path.join(self.craft.output_dir, "output.txt"), "w+") as f:
+            if not len(found_bibs) == 0:
+                self.img_with_bibs_ctr += 1
+                f.write("Found bib numbers: {}".format(found_bibs))
+            else:
+                f.write("No bib numbers found")
+                logging.info("No bib numbers found")
+        self.img_counter += 1
+
+        logging.info("Processing time: {} seconds".format(time.time() - t0))
+        logging.info("Done processing image: {}\n".format(img_path))
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.craft.unload_craftnet_model()

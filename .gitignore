@@ -5,3 +5,4 @@ logs/
 temp.py         # temporary file for development
 **/out
 imgs/**
+out/

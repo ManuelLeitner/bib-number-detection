@@ -1,27 +1,31 @@
+import datetime
 import logging
 
 # import Craft class
 
 # OpenCV
 import argparse
+import os.path
 
 import sys
+import random
 
 from detection.BibNumberDetector import BibNumberDetector
 from detection.service.MockBibNumberService import MockBibNumberService
 from detection.service.interface.IBibNumberService import IBibNumberService
 
 
-
 def main():
+    os.mkdir("logs")
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                        datefmt='%d-%b-%y %H:%M:%S', filename='logs/bib-number-detection.log', filemode='w')
+                        datefmt='%d-%b-%y %H:%M:%S',
+                        filename=f"logs/bib-number-detection-{random.randint(1000, 9999)}.log", filemode='w')
     logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 
     # parse arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("-o", "--out", help="path to output directory", default="./imgs/out")
-    parser.add_argument("imgs", help="path to input image(s)", nargs="*", default=["./imgs/zieleinlauf/Laufend Helfen 2021-05694.jpg"])
+    parser.add_argument("-o", "--out", help="path to output directory", default="./out")
+    parser.add_argument("imgs", help="path to input image(s)", nargs="+")
     parser.description = "Parses a given image and outputs the detected bib numbers"
 
     args = parser.parse_args()
@@ -30,7 +34,12 @@ def main():
 
     with BibNumberDetector(OUT_PATH) as detector:
         for img_path in IMG_PATHS:
+            if not os.path.exists(img_path):
+                logging.error("Image path does not exist: {}".format(img_path))
+                continue
             detector.detect_bib_numbers(img_path)
+        logging.info(
+            f"Processed {detector.img_counter} images with {detector.img_with_bibs_ctr} images where at least 1 bib number was found ({detector.img_with_bibs_ctr / detector.img_counter * 100}%)")
 
 
 if __name__ == '__main__':
