@@ -1,11 +1,10 @@
-import time
-
-import numpy as np
 import logging
 import os
 import sys
+import time
 
 import cv2
+import numpy as np
 import pytesseract
 from craft_text_detector import Craft
 
@@ -17,6 +16,7 @@ class BibNumberDetector:
     def __init__(self, OUT_PATH: str):
         self.img_with_bibs_ctr = 0
         self.img_counter = 0
+        self.img_count_all = -1
         self.__TESSERACT_CONFIG__ = "--psm 13"
 
         self.__supported_image_formats__ = ["jpg", "jpeg", "png", "tif", "tiff", "bmp", "dib", "webp"]
@@ -38,7 +38,9 @@ class BibNumberDetector:
     def detect_bib_numbers(self, img_path):
         try:
             if os.path.isdir(img_path):
-                for img_file in os.listdir(img_path):
+                img_files = os.listdir(img_path)
+                self.img_count_all = len(img_files)
+                for img_file in img_files:
                     self.detect_bib_numbers(os.path.join(img_path, img_file))
             else:
                 self.detect_bib_numbers_single(img_path)
@@ -52,8 +54,10 @@ class BibNumberDetector:
             return
 
         self.craft.output_dir = os.path.join(self.OUT_PATH, os.path.basename(img_path))
-
-        logging.info("Processing image: {}".format(os.path.abspath(img_path)))
+        self.img_counter += 1
+        logging.info("Processing image{}: {}".format(
+            "" if self.img_count_all == -1 else f" ({self.img_counter}/{self.img_count_all})",
+            os.path.abspath(img_path)))
         logging.info("Output path: {}".format(os.path.abspath(self.craft.output_dir)))
         t0 = time.time()
 
@@ -82,10 +86,11 @@ class BibNumberDetector:
             else:
                 f.write("No bib numbers found")
                 logging.info("No bib numbers found")
-        self.img_counter += 1
 
         logging.info("Processing time: {} seconds".format(time.time() - t0))
-        logging.info("Done processing image: {}\n".format(os.path.abspath(img_path)))
+        logging.info("Done processing image{}: {}\n".format(
+            "" if self.img_count_all == -1 else f" ({self.img_counter}/{self.img_count_all})",
+            os.path.abspath(img_path)))
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.craft.unload_craftnet_model()

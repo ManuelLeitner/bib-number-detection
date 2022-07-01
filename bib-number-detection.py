@@ -1,12 +1,13 @@
+import argparse
 import datetime
 import logging
-import warnings
-import numpy as np
-import argparse
 import os.path
 import sys
-import random
 import time
+import warnings
+
+import numpy as np
+
 from detection.BibNumberDetector import BibNumberDetector
 
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
