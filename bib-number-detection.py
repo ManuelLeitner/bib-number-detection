@@ -1,7 +1,11 @@
 import datetime
 import logging
 
-# import Craft class
+import warnings
+
+import numpy as np
+
+warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
 
 # OpenCV
 import argparse
@@ -34,7 +38,7 @@ def main():
     IMG_PATHS = args.imgs
     OUT_PATH = args.out
 
-    startTime=time.time()
+    startTime = time.time()
     with BibNumberDetector(OUT_PATH) as detector:
         for img_path in IMG_PATHS:
             if not os.path.exists(img_path):
@@ -43,7 +47,9 @@ def main():
             detector.detect_bib_numbers(img_path)
         logging.info(
             f"Processed {detector.img_counter} images with {detector.img_with_bibs_ctr} images where at least 1 bib number was found ({detector.img_with_bibs_ctr / detector.img_counter * 100}%)")
-    logging.info(f"Total time: {datetime.timedelta(seconds=time.time() - startTime)}s with average of {datetime.timedelta(seconds=(time.time() - startTime) / detector.img_counter)}s per image")
+    logging.info(
+        f"Total time: {datetime.timedelta(seconds=time.time() - startTime)}s with average of {datetime.timedelta(seconds=(time.time() - startTime) / detector.img_counter)}s per image")
+
 
 if __name__ == '__main__':
     main()
