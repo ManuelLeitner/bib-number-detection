@@ -7,3 +7,4 @@ temp.py         # temporary file for development
 imgs/**
 out/
 **/__pycache__
+improvements.md
