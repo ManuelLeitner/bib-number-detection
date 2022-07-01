@@ -8,3 +8,5 @@ imgs/**
 out/
 **/__pycache__
 improvements.md
+
+res/test/output/

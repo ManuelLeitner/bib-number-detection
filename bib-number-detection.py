@@ -3,6 +3,7 @@ import datetime
 import logging
 import os.path
 import sys
+import threading
 import time
 import warnings
 
@@ -40,6 +41,9 @@ def main():
                 logging.error("Image path does not exist: {}".format(img_path))
                 continue
             detector.detect_bib_numbers(img_path)
+        for t in threading.enumerate():
+            if t is not threading.current_thread():
+                t.join()  # wait for all threads to finish
         logging.info(
             f"Processed {detector.img_counter} images with {detector.img_with_bibs_ctr} images where at least 1 bib number was found ({detector.img_with_bibs_ctr / detector.img_counter * 100}%)")
     logging.info(

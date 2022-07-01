@@ -1,12 +1,21 @@
 import logging
 import os
 import sys
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, ALL_COMPLETED, wait
 
 import cv2
 import numpy as np
 import pytesseract
-from craft_text_detector import Craft
+from craft_text_detector import (
+    load_craftnet_model,
+    load_refinenet_model,
+    get_prediction,
+    export_detected_regions,
+    export_extra_results,
+    empty_cuda_cache
+)
 
 from detection.service.MockBibNumberService import MockBibNumberService
 from detection.service.interface.IBibNumberService import IBibNumberService
@@ -14,6 +23,7 @@ from detection.service.interface.IBibNumberService import IBibNumberService
 
 class BibNumberDetector:
     def __init__(self, OUT_PATH: str):
+        self.threadLock = threading.Lock()
         self.img_with_bibs_ctr = 0
         self.img_counter = 0
         self.img_count_all = -1
@@ -21,7 +31,8 @@ class BibNumberDetector:
 
         self.__supported_image_formats__ = ["jpg", "jpeg", "png", "tif", "tiff", "bmp", "dib", "webp"]
 
-        self.craft = Craft(output_dir=OUT_PATH, crop_type="poly", cuda=False)
+        self.refine_net = load_refinenet_model()
+        self.craft_net = load_craftnet_model()
 
         self.bib_number_svc: IBibNumberService = MockBibNumberService()
 
@@ -35,38 +46,78 @@ class BibNumberDetector:
     def __enter__(self):
         return self
 
-    def detect_bib_numbers(self, img_path):
+    def detect_bib_numbers(self, img_path) -> dict[str, list[int]]:
+
+        ret: dict[str, list[int]] = {}
+        return self._detect_bib_numbers(img_path, ret)
+
+    def _detect_bib_numbers(self, img_path, ret: dict[str, list[int]]) -> dict[str, list[int]]:
         try:
             if os.path.isdir(img_path):
                 img_files = os.listdir(img_path)
                 self.img_count_all = len(img_files)
-                for img_file in img_files:
-                    self.detect_bib_numbers(os.path.join(img_path, img_file))
+                with ThreadPoolExecutor(max_workers=10) as executor:
+                    futures = [executor.submit(self._detect_bib_numbers, os.path.join(img_path, img_file), ret) for
+                               img_file in img_files]
+                    for f in futures:
+                        ret.update(f.result())
+
             else:
-                self.detect_bib_numbers_single(img_path)
+                ret[os.path.normpath(img_path)] = self.detect_bib_numbers_single(img_path)
         except Exception as e:
             logging.error(e)
             logging.error("FATAL: Could not process img_path: {}".format(img_path))
+        return ret
 
-    def detect_bib_numbers_single(self, img_path: str):
+    def detect_bib_numbers_single(self, img_path: str) -> list[int] | None:
         if img_path.split(".")[-1] not in self.__supported_image_formats__:
             logging.warning("Image format not supported: {}".format(img_path))
-            return
+            return None
+        output_dir = os.path.join(self.OUT_PATH, os.path.basename(img_path))
 
-        self.craft.output_dir = os.path.join(self.OUT_PATH, os.path.basename(img_path))
-        self.img_counter += 1
+        with self.threadLock:
+            self.img_counter += 1
         logging.info("Processing image{}: {}".format(
             "" if self.img_count_all == -1 else f" ({self.img_counter}/{self.img_count_all})",
             os.path.abspath(img_path)))
-        logging.info("Output path: {}".format(os.path.abspath(self.craft.output_dir)))
+        logging.info("Output path: {}".format(os.path.abspath(output_dir)))
         t0 = time.time()
 
+        # apply craft text detection and export detected regions to output directory
+        prediction_result = get_prediction(
+            image=img_path,
+            craft_net=self.craft_net,
+            refine_net=self.refine_net,
+            text_threshold=0.7,
+            link_threshold=0.4,
+            low_text=0.4,
+            cuda=False,
+            long_size=1280
+        )
+        regions = prediction_result["polys"]
+        if type(img_path) == str:
+            file_name, file_ext = os.path.splitext(os.path.basename(img_path))
+        else:
+            file_name = "image"
+        exported_file_paths = export_detected_regions(
+            image=img_path,
+            regions=regions,
+            file_name=file_name,
+            output_dir=output_dir,
+            rectify=True,
+        )
+        # extra results
+        export_extra_results(
+            image=img_path,
+            regions=regions,
+            heatmaps=prediction_result["heatmaps"],
+            file_name=file_name,
+            output_dir=output_dir,
+        )
         image = cv2.imread(img_path)
 
-        # apply craft text detection and export detected regions to output directory
-        prediction_result = self.craft.detect_text(img_path)
         found_bibs: list[int] = []
-        for box in prediction_result["boxes"]:
+        for box in regions:
             cropped_img = rectify_poly(image, box)
 
             result: str = pytesseract.image_to_string(cropped_img, config=self.__TESSERACT_CONFIG__).strip()
@@ -76,12 +127,13 @@ class BibNumberDetector:
                 if self.bib_number_svc.find_number(int(result)) is not None:
                     found_bibs.append(int(result))
                     logging.info("Found bib number: {}".format(result_number))
-            except:
+            except ValueError:
                 logging.debug("Could not parse bib number: {}".format(result))
 
-        with open(os.path.join(self.craft.output_dir, "output.txt"), "w+") as f:
+        with open(os.path.join(output_dir, "output.txt"), "w+") as f:
             if not len(found_bibs) == 0:
-                self.img_with_bibs_ctr += 1
+                with self.threadLock:
+                    self.img_with_bibs_ctr += 1
                 f.write("Found bib numbers: {}".format(found_bibs))
             else:
                 f.write("No bib numbers found")
@@ -91,10 +143,10 @@ class BibNumberDetector:
         logging.info("Done processing image{}: {}\n".format(
             "" if self.img_count_all == -1 else f" ({self.img_counter}/{self.img_count_all})",
             os.path.abspath(img_path)))
+        return found_bibs
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.craft.unload_craftnet_model()
-        self.craft.unload_refinenet_model()
+        empty_cuda_cache()
 
 
 def rectify_poly(img, poly):
