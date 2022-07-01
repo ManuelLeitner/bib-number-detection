@@ -1,23 +1,15 @@
 import datetime
 import logging
-
 import warnings
-
 import numpy as np
-
-warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
-
-# OpenCV
 import argparse
 import os.path
-
 import sys
 import random
 import time
-
 from detection.BibNumberDetector import BibNumberDetector
-from detection.service.MockBibNumberService import MockBibNumberService
-from detection.service.interface.IBibNumberService import IBibNumberService
+
+warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
 
 
 def main():
