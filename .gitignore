@@ -6,3 +6,4 @@ temp.py         # temporary file for development
 **/out
 imgs/**
 out/
+**/__pycache__
