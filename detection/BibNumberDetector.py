@@ -85,7 +85,7 @@ class BibNumberDetector:
         self.img_counter += 1
 
         logging.info("Processing time: {} seconds".format(time.time() - t0))
-        logging.info("Done processing image: {}\n".format(img_path))
+        logging.info("Done processing image: {}\n".format(os.path.abspath(img_path)))
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.craft.unload_craftnet_model()

@@ -15,9 +15,11 @@ warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
 def main():
     if not os.path.exists("logs"):
         os.mkdir("logs")
+    logging_file_name = "logs/bib-number-detection-{}.log".format(
+        datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                         datefmt='%d-%b-%y %H:%M:%S',
-                        filename=f"logs/bib-number-detection-{random.randint(1000, 9999)}.log", filemode='w')
+                        filename=logging_file_name, filemode='w')
     logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 
     # parse arguments
