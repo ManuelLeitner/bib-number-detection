@@ -22,12 +22,13 @@ from detection.service.interface.IBibNumberService import IBibNumberService
 
 
 class BibNumberDetector:
-    def __init__(self, OUT_PATH: str):
+    def __init__(self, OUT_PATH: str, NUM_THREADS: int = 1):
         self.threadLock = threading.Lock()
         self.img_with_bibs_ctr = 0
         self.img_counter = 0
         self.img_count_all = -1
         self.__TESSERACT_CONFIG__ = "--psm 13"
+        self.NUM_THREADS = NUM_THREADS
 
         self.__supported_image_formats__ = ["jpg", "jpeg", "png", "tif", "tiff", "bmp", "dib", "webp"]
 
@@ -47,7 +48,6 @@ class BibNumberDetector:
         return self
 
     def detect_bib_numbers(self, img_path) -> dict[str, list[int]]:
-
         ret: dict[str, list[int]] = {}
         return self._detect_bib_numbers(img_path, ret)
 
@@ -56,7 +56,7 @@ class BibNumberDetector:
             if os.path.isdir(img_path):
                 img_files = os.listdir(img_path)
                 self.img_count_all = len(img_files)
-                with ThreadPoolExecutor(max_workers=10) as executor:
+                with ThreadPoolExecutor(max_workers=self.NUM_THREADS) as executor:
                     futures = [executor.submit(self._detect_bib_numbers, os.path.join(img_path, img_file), ret) for
                                img_file in img_files]
                     for f in futures:

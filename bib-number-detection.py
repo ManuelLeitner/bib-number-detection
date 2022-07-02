@@ -24,18 +24,28 @@ def main():
                         filename=logging_file_name, filemode='w')
     logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 
+    def num_range(x):
+        x = int(x)
+        if x < 1:
+            raise argparse.ArgumentTypeError("Thread count must be greater than 0")
+        elif x > 10:
+            raise argparse.ArgumentTypeError("Thread count must be less than or equal 10")
+        return x
+
     # parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("-o", "--out", help="path to output directory", default="./out")
     parser.add_argument("imgs", help="path to input image(s)", nargs="+")
+    parser.add_argument("-t", "--threads", help="number of threads 1 <= t <= 10", default=1, type=num_range)
     parser.description = "Parses a given image and outputs the detected bib numbers"
 
     args = parser.parse_args()
     IMG_PATHS = args.imgs
     OUT_PATH = args.out
+    NUM_THREADS = args.threads
 
     startTime = time.time()
-    with BibNumberDetector(OUT_PATH) as detector:
+    with BibNumberDetector(OUT_PATH, NUM_THREADS) as detector:
         for img_path in IMG_PATHS:
             if not os.path.exists(img_path):
                 logging.error("Image path does not exist: {}".format(img_path))
