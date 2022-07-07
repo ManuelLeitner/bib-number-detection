@@ -3,7 +3,7 @@ import os
 import sys
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor, ALL_COMPLETED, wait
+from concurrent.futures import ThreadPoolExecutor
 
 import cv2
 import numpy as np
@@ -19,7 +19,7 @@ from craft_text_detector import (
 
 from detection.service.MockBibNumberService import MockBibNumberService
 from detection.service.interface.IBibNumberService import IBibNumberService
-
+import globals
 
 class BibNumberDetector:
     def __init__(self, OUT_PATH: str, NUM_THREADS: int = 1):
@@ -99,21 +99,23 @@ class BibNumberDetector:
             file_name, file_ext = os.path.splitext(os.path.basename(img_path))
         else:
             file_name = "image"
-        exported_file_paths = export_detected_regions(
-            image=img_path,
-            regions=regions,
-            file_name=file_name,
-            output_dir=output_dir,
-            rectify=True,
-        )
+        if globals.LOG_LEVEL <= logging.INFO:
+            exported_file_paths = export_detected_regions(
+                image=img_path,
+                regions=regions,
+                file_name=file_name,
+                output_dir=output_dir,
+                rectify=True,
+            )
         # extra results
-        export_extra_results(
-            image=img_path,
-            regions=regions,
-            heatmaps=prediction_result["heatmaps"],
-            file_name=file_name,
-            output_dir=output_dir,
-        )
+        if globals.LOG_LEVEL <= logging.DEBUG:
+            export_extra_results(
+                image=img_path,
+                regions=regions,
+                heatmaps=prediction_result["heatmaps"],
+                file_name=file_name,
+                output_dir=output_dir,
+            )
         image = cv2.imread(img_path)
 
         found_bibs: list[int] = []

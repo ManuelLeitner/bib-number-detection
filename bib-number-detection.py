@@ -6,7 +6,7 @@ import sys
 import threading
 import time
 import warnings
-
+import globals
 import numpy as np
 
 from detection.BibNumberDetector import BibNumberDetector
@@ -19,10 +19,6 @@ def main():
         os.mkdir("logs")
     logging_file_name = "logs/bib-number-detection-{}.log".format(
         datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                        datefmt='%d-%b-%y %H:%M:%S',
-                        filename=logging_file_name, filemode='w')
-    logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 
     def num_range(x):
         x = int(x)
@@ -37,9 +33,17 @@ def main():
     parser.add_argument("-o", "--out", help="path to output directory", default="./out")
     parser.add_argument("imgs", help="path to input image(s)", nargs="+")
     parser.add_argument("-t", "--threads", help="number of threads 1 <= t <= 10", default=1, type=num_range)
+    parser.add_argument("-log", "--log", help="log level", default="info",
+                        choices=["debug", "info", "warning", "error", "critical"])
     parser.description = "Parses a given image and outputs the detected bib numbers"
 
     args = parser.parse_args()
+    globals.LOG_LEVEL = getattr(logging, args.log.upper())
+    logging.basicConfig(level=globals.LOG_LEVEL, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                        datefmt='%d-%b-%y %H:%M:%S',
+                        filename=logging_file_name, filemode='w')
+    logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
+
     IMG_PATHS = args.imgs
     OUT_PATH = args.out
     NUM_THREADS = args.threads
