@@ -1,6 +1,7 @@
 # Laufnummern erkennen für Laufend Helfen
 Dieses Projekt soll aus den von Laufen Helfen geschossen Bildern von den Läufern am Zieleinlauf 
-die Laufnummer erkennen und ausgeben. 
+die Laufnummer erkennen und ausgeben.
+Außerdem werden die Daten auf api.laufendhelfen.org hochgeladen.
 
 ## Verwendung
 ```shell
