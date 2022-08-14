@@ -21,6 +21,7 @@ from detection.service.MockBibNumberService import MockBibNumberService
 from detection.service.interface.IBibNumberService import IBibNumberService
 import globals
 
+
 class BibNumberDetector:
     def __init__(self, OUT_PATH: str, NUM_THREADS: int = 1):
         self.threadLock = threading.Lock()
@@ -53,11 +54,12 @@ class BibNumberDetector:
 
     def _detect_bib_numbers(self, img_path, ret: dict[str, list[int]]) -> dict[str, list[int]]:
         try:
-            if os.path.isdir(img_path):
-                img_files = os.listdir(img_path)
+            if type(img_path) == list or os.path.isdir(img_path):
+
+                img_files = img_path or [os.path.join(img_path, img_file) for img_file in os.listdir(img_path)]
                 self.img_count_all = len(img_files)
                 with ThreadPoolExecutor(max_workers=self.NUM_THREADS) as executor:
-                    futures = [executor.submit(self._detect_bib_numbers, os.path.join(img_path, img_file), ret) for
+                    futures = [executor.submit(self._detect_bib_numbers,img_file, ret) for
                                img_file in img_files]
                     for f in futures:
                         ret.update(f.result())

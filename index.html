@@ -1,0 +1,77 @@
+<html>
+<header>
+    <script>
+    function send(){
+		const Http = new XMLHttpRequest();
+        Http.open("POST", "image/"+image);
+
+        Http.setRequestHeader('Content-type', 'application/json');
+        var data = JSON.stringify(nums);
+        Http.send(data);
+    }
+    function load(){
+        const Http = new XMLHttpRequest();
+		Http.responseType= "blob";
+        Http.open("GET", "image");
+        Http.send();
+		noImage=false;
+
+        Http.onreadystatechange = () => {
+            if(Http.readyState==4){
+				if(Http.status==200){
+					document.getElementById("image").src = window.URL.createObjectURL(Http.response);
+					nums = [];
+                }else{
+					document.getElementById("image").src ="";
+					nums = [];
+					noImage=true;
+                }
+            }
+        }
+    }
+	image="123";
+    num="";
+	noImage=true;
+    nums=[];
+    document.addEventListener('keydown', (e) => {
+        //openFullscreen();
+
+      var k = e.key;
+      if(k >= '0' && k <= '9'){
+        num += k;
+      }else if(k == "Backspace"){
+        num = num.substring(0, num.length - 1);
+      }else if(k == "Enter"){
+        if(num == ""){
+            send();
+            load();
+        }else{
+            nums.push(num);
+            num="";
+        }
+      }
+      document.getElementById("num").innerHTML=num;
+    });
+    load();
+	setTimeout (function(){
+	if(noImage)
+		load();
+	}, 1000);
+function openFullscreen() {
+    var elem = document.getElementById("num");
+  if (elem.requestFullscreen) {
+    elem.requestFullscreen();
+  } else if (elem.webkitRequestFullscreen) { /* Safari */
+    elem.webkitRequestFullscreen();
+  } else if (elem.msRequestFullscreen) { /* IE11 */
+    elem.msRequestFullscreen();
+  }
+}
+
+    </script>
+</header>
+<body>
+<h1 id="num"></h1>
+<img id="image" style="width: 100%;">
+</body>
+</html>
