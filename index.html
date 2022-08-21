@@ -10,23 +10,29 @@
         Http.send(data);
     }
     function load(){
-        const Http = new XMLHttpRequest();
-		Http.responseType= "blob";
-        Http.open("GET", "image");
-        Http.send();
-		noImage=false;
+        try{
+            const Http = new XMLHttpRequest();
+            Http.responseType= "blob";
+            Http.open("GET", "image");
+            Http.send();
+            noImage=false;
 
-        Http.onreadystatechange = () => {
-            if(Http.readyState==4){
-				if(Http.status==200){
-					document.getElementById("image").src = window.URL.createObjectURL(Http.response);
-					nums = [];
-                }else{
-					document.getElementById("image").src ="";
-					nums = [];
-					noImage=true;
+            Http.onreadystatechange = () => {
+                if(Http.readyState==4){
+                    if(Http.status==200){
+                        image=Http.getResponseHeader("Content-Disposition");
+                        image=image.substring(22,image.length-1);
+                        document.getElementById("image").src = window.URL.createObjectURL(Http.response);
+                        nums = [];
+                    }else{
+                        document.getElementById("image").src ="";
+                        nums = [];
+                        noImage=true;
+                    }
                 }
             }
+        }catch (error) {
+            console.error(error);
         }
     }
 	image="123";
@@ -46,14 +52,14 @@
             send();
             load();
         }else{
-            nums.push(num);
+            nums.push(parseInt(num,10));
             num="";
         }
       }
       document.getElementById("num").innerHTML=num;
     });
     load();
-	setTimeout (function(){
+	setInterval (function(){
 	if(noImage)
 		load();
 	}, 1000);

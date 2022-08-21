@@ -2,7 +2,8 @@ from threading import Thread
 import os
 from time import sleep
 
-from result_collector import ResultCollector, ResultState
+from result import ResultState
+from result_collector import ResultCollector
 from typing import Callable
 
 
